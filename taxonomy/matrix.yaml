@@ -1,0 +1,35 @@
+# Coverage matrix. Smoke (P0) used a 2x2 subset; P1 expands within the math domain to 7 topics x 3
+# difficulties = 21 cells (coarse-grained per docs/90-MVP搭建指南.md §三: "覆盖矩阵先粗，10知识点x3难度").
+# Code domain is intentionally out of scope for this pass (verify/code_exec.py isn't implemented yet).
+dimensions:
+  topic:
+    - arithmetic
+    - algebra
+    - geometry
+    - word_problems
+    - fractions_decimals
+    - ratios_proportions
+    - exponents_roots
+  difficulty: [easy, medium, hard]
+cells:
+  - {id: arithmetic/easy, topic: arithmetic, difficulty: easy}
+  - {id: arithmetic/medium, topic: arithmetic, difficulty: medium}
+  - {id: arithmetic/hard, topic: arithmetic, difficulty: hard}
+  - {id: algebra/easy, topic: algebra, difficulty: easy}
+  - {id: algebra/medium, topic: algebra, difficulty: medium}
+  - {id: algebra/hard, topic: algebra, difficulty: hard}
+  - {id: geometry/easy, topic: geometry, difficulty: easy}
+  - {id: geometry/medium, topic: geometry, difficulty: medium}
+  - {id: geometry/hard, topic: geometry, difficulty: hard}
+  - {id: word_problems/easy, topic: word_problems, difficulty: easy}
+  - {id: word_problems/medium, topic: word_problems, difficulty: medium}
+  - {id: word_problems/hard, topic: word_problems, difficulty: hard}
+  - {id: fractions_decimals/easy, topic: fractions_decimals, difficulty: easy}
+  - {id: fractions_decimals/medium, topic: fractions_decimals, difficulty: medium}
+  - {id: fractions_decimals/hard, topic: fractions_decimals, difficulty: hard}
+  - {id: ratios_proportions/easy, topic: ratios_proportions, difficulty: easy}
+  - {id: ratios_proportions/medium, topic: ratios_proportions, difficulty: medium}
+  - {id: ratios_proportions/hard, topic: ratios_proportions, difficulty: hard}
+  - {id: exponents_roots/easy, topic: exponents_roots, difficulty: easy}
+  - {id: exponents_roots/medium, topic: exponents_roots, difficulty: medium}
+  - {id: exponents_roots/hard, topic: exponents_roots, difficulty: hard}

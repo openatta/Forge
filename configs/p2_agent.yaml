@@ -1,0 +1,11 @@
+# STATUS: placeholder — not wired to any code path yet. Ships in P2.
+run_name: p2_agent
+env: TODO  # toy_calc, then 2-3 business-relevant tool environments
+harness:
+  max_steps: 15
+  max_tokens: 65536
+  tool_timeout_s: 30
+teacher:
+  k_rollouts: 4
+verify:
+  verifier_id: env_state_v1

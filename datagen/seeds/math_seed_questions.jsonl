@@ -1,0 +1,7 @@
+{"text": "What is 127 + 358?", "cell": "arithmetic/easy", "family_id": "arith_sum", "verify_method": "numeric", "gold": "485", "split": "train"}
+{"text": "What is 127 + 358?", "cell": "arithmetic/easy", "family_id": "arith_sum", "verify_method": "numeric", "gold": "485", "split": "train"}
+{"text": "A school orders 24 boxes of pencils. Each box contains 15 pencils. How many pencils are there in total?", "cell": "arithmetic/medium", "family_id": "arith_word_mult", "verify_method": "numeric", "gold": "360", "split": "train"}
+{"text": "Solve for x: 3x + 7 = 22. What is the value of x?", "cell": "algebra/easy", "family_id": "algebra_linear_simple", "verify_method": "numeric", "gold": "5", "split": "train"}
+{"text": "Solve for x: 4(x + 2) - x = 26. What is the value of x?", "cell": "algebra/medium", "family_id": "algebra_linear_multistep", "verify_method": "numeric", "gold": "6", "split": "train"}
+{"text": "Solve for x: x^2 - 5x + 6 = 0. List all solutions for x, separated by a comma.", "cell": "algebra/medium", "family_id": "algebra_quadratic", "verify_method": "numeric_set", "gold": "2,3", "split": "train"}
+{"text": "A jacket costs $80 before a 25% discount. What is the sale price in dollars?", "cell": "arithmetic/medium", "family_id": "arith_percentage", "verify_method": "numeric", "gold": "60", "split": "holdout"}

@@ -1,0 +1,10 @@
+.venv/
+__pycache__/
+*.pyc
+*.egg-info/
+.env
+.claude/
+data/**/*.jsonl
+data/raw/
+data/*/checkpoints/
+evals/holdout_p1/

@@ -1,0 +1,34 @@
+run_name: p1_math_code
+data_dir: data/p1
+holdout_dir: evals/holdout_p1
+reports_dir: reports
+matrix_path: taxonomy/matrix.yaml
+
+gen:
+  quota_per_cell: 3    # train questions per cell (21 cells -> ~63 train candidates)
+  holdout_per_cell: 1  # holdout questions per cell (21 cells -> 21 holdout questions)
+  max_tokens: 8192      # this teacher model spends hidden reasoning tokens before visible output;
+                        # 2048/4096 came back empty (finish_reason=length) for "hard" cells -- confirmed via direct probe
+
+teacher:
+  k_high_temp: 8       # per docs/90-MVP搭建指南.md §六 D5-7
+  temperature_high: 0.8
+  temperature_low: 0.2
+  max_tokens: 1024
+  concurrency: 8
+
+student:
+  weak:
+    temperature: 0.3
+    max_tokens: 1024
+
+verify:
+  verifier_id: math_answer_v1
+
+select:
+  value_target_size: 30   # value-selected arm's total sample budget; baseline arm matches it cell-by-cell
+  baseline_seed: 42
+
+train:
+  base_model: mock-student   # label only -- train/sft.py mode=mock never loads real weights
+  mode: mock                 # mode=real ships once GPU/accelerate compute is available

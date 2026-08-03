@@ -1,0 +1,17 @@
+run_name: smoke
+seeds_path: datagen/seeds/math_seed_questions.jsonl
+data_dir: data
+holdout_dir: evals/holdout
+reports_dir: reports
+teacher:
+  k_high_temp: 2
+  temperature_high: 0.8
+  temperature_low: 0.2
+  max_tokens: 512
+  concurrency: 4
+student:
+  weak:
+    temperature: 0.3
+    max_tokens: 512
+verify:
+  verifier_id: math_answer_v1

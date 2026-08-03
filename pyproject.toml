@@ -1,0 +1,30 @@
+[project]
+name = "distill-mvp"
+version = "0.1.0"
+requires-python = ">=3.11"
+dependencies = [
+    "litellm<1.92",  # 1.92+ ships a Rust extension with no macOS wheels; pure-python below this pin
+    "pydantic>=2",
+    "typer",
+    "pyyaml",
+    "python-dotenv",
+    "sympy",
+]
+
+# P0 code never imports these — they're the P1+ tech-stack choices named in docs/90-MVP搭建指南.md
+# (Curator for datagen/generate.py's P1 pipeline, DuckDB for querying jsonl/parquet at scale, datasketch
+# for datagen/dedup.py's P1 MinHash dedup). bespokelabs-curator in particular pulls in a very heavy
+# transitive tree (full Google Cloud AI Platform SDK via vertexai, matplotlib, pandas, datasets/pyarrow,
+# mistralai, anthropic, instructor) — install with `pip install -e '.[p1]'` once P1 work actually starts.
+[project.optional-dependencies]
+p1 = ["bespokelabs-curator", "duckdb", "datasketch"]
+
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[tool.setuptools.packages.find]
+include = [
+    "core*", "taxonomy*", "datagen*", "collect*", "envs*",
+    "verify*", "select_*", "compile_*", "train*", "evals*",
+]

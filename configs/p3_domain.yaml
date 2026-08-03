@@ -1,0 +1,8 @@
+# STATUS: placeholder — not wired to any code path yet. Ships in P3.
+run_name: p3_domain
+source_docs: TODO  # domain documents to reverse-generate QA from
+verify:
+  verifier_id: evidence_v1  # + judge_v1 as calibrated fallback
+gkd:
+  lambda: 0.5
+  teacher: TODO  # local 32B teacher
