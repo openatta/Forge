@@ -1,4 +1,4 @@
-# distill-mvp project-specific
+# project-specific
 .venv/
 .env
 .claude/
@@ -6,6 +6,7 @@ data/**/*.jsonl
 data/raw/
 data/*/checkpoints/
 evals/holdout_p1/
+docs/
 
 # Byte-compiled / optimized / DLL files
 __pycache__/
