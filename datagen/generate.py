@@ -133,6 +133,12 @@ def _validate_gen_item(item) -> bool:
     )
 
 
+# A cell that keeps coming back all-duplicates/all-invalid shouldn't retry forever within one
+# run -- cap top-up attempts per cell and let the *next* `run.py p1` invocation pick up where
+# this one left off (same resume story collect/sample.py already relies on for failed calls).
+_MAX_TOPUP_ROUNDS_PER_CELL = 3
+
+
 async def generate_questions_via_teacher(
     matrix: dict,
     teacher: ModelClient,
@@ -149,19 +155,22 @@ async def generate_questions_via_teacher(
     any item with an unclear/missing verify_method is discarded, never guessed.
 
     Dedup order per cell (docs/reference/02 §五, layers 1+3; layer 2/semantic is out of scope --
-    see project plan): exact -> MinHash near-dup -> template-family cap, all applied to the WHOLE
-    per-cell candidate pool (quota_per_cell + holdout_per_cell items) BEFORE splitting into
-    train/holdout. This is what keeps a train question and a holdout question from the same cell
-    from being near-duplicates of each other -- template-family isolation between train and eval is
-    a hard requirement (docs/reference/06), and family_id here is just the cell id (a coarse stand-in
-    for real template-family clustering, which free-form LLM-generated text doesn't give us for free).
+    see project plan): exact -> MinHash near-dup -> template-family cap, all applied to the round's
+    candidate pool BEFORE splitting into train/holdout. This is what keeps a train question and a
+    holdout question from the same cell from being near-duplicates of each other -- template-family
+    isolation between train and eval is a hard requirement (docs/reference/06), and family_id here
+    is just the cell id (a coarse stand-in for real template-family clustering, which free-form
+    LLM-generated text doesn't give us for free).
 
     Resume: generation is sampled at temperature=0.9 for diversity, so unlike collect/sample.py's
     attempt_id there's no way to know a question's id before calling the teacher -- there's nothing
-    to check existence of ahead of time. Instead this resumes at cell granularity: a cell already
-    represented in questions_store/holdout_store is skipped outright (no new API call, no re-roll of
-    already-accepted questions); a cell that failed last run (e.g. unparseable JSON) wrote nothing and
-    is retried automatically, mirroring collect/sample.py's "failed calls retry on next run".
+    to check existence of ahead of time. This resumes at cell *quota* granularity rather than cell
+    *presence*: a cell only gets skipped once it actually has >=quota_per_cell train questions and
+    >=holdout_per_cell holdout questions on disk. A cell sitting below quota (e.g. because a prior
+    round's candidates mostly collided with MinHash near-dupes) re-requests just the remaining
+    shortfall, for up to _MAX_TOPUP_ROUNDS_PER_CELL rounds per invocation -- a round that lands zero
+    usable new questions stops early rather than burning the rest of its rounds on a cell that's
+    clearly stuck (e.g. an exhausted or repetitive topic), leaving it for the next `run.py p1` run.
 
     max_tokens defaults to 8192, not the smaller budget collection/eval calls use elsewhere: this
     teacher model spends hidden reasoning tokens before emitting visible output, and empirically
@@ -171,65 +180,104 @@ async def generate_questions_via_teacher(
     """
     all_train: list[Question] = list(questions_store.all())
     all_holdout: list[Question] = list(holdout_store.all())
-    existing_cells = {q.cell for q in all_train} | {q.cell for q in all_holdout}
     total_dropped = 0
 
+    def _cell_texts(cell_id: str) -> set[str]:
+        return {ledger_mod.normalize(q.text) for q in all_train + all_holdout if q.cell == cell_id}
+
     for cell in matrix["cells"]:
-        if cell["id"] in existing_cells:
-            logger.info("gen(p1) cell=%s: already generated, skipping (resume)", cell["id"])
-            continue
-        want = quota_per_cell + holdout_per_cell
-        messages = _build_gen_messages(cell["topic"], cell["difficulty"], want)
-        try:
-            result = await teacher.chat(messages, temperature=0.9, max_tokens=max_tokens)
-            items = _extract_json_array(result.content)
-        except Exception as exc:  # noqa: BLE001
-            logger.error("generation failed for cell %s: %s -- skipping cell", cell["id"], exc)
+        cell_id = cell["id"]
+        train_have = sum(1 for q in all_train if q.cell == cell_id)
+        holdout_have = sum(1 for q in all_holdout if q.cell == cell_id)
+        if train_have >= quota_per_cell and holdout_have >= holdout_per_cell:
+            logger.info(
+                "gen(p1) cell=%s: quota already met (train=%d/%d holdout=%d/%d), skipping (resume)",
+                cell_id, train_have, quota_per_cell, holdout_have, holdout_per_cell,
+            )
             continue
 
-        candidates: list[Question] = []
-        cell_dropped = 0
-        for item in items:
-            if not _validate_gen_item(item):
-                cell_dropped += 1
-                continue
-            candidates.append(
-                Question(
-                    id=ledger_mod.question_id(item["text"]),
-                    text=item["text"],
-                    cell=cell["id"],
-                    family_id=cell["id"],
-                    source="teacher_gen",
-                    verify_method=item["verify_method"],
-                    gold=str(item["gold"]),
-                    split="train",  # placeholder; real split decided below after dedup
-                    config_hash=config_hash,
+        for round_num in range(1, _MAX_TOPUP_ROUNDS_PER_CELL + 1):
+            train_need = max(0, quota_per_cell - train_have)
+            holdout_need = max(0, holdout_per_cell - holdout_have)
+            if train_need == 0 and holdout_need == 0:
+                break
+            want = train_need + holdout_need
+            messages = _build_gen_messages(cell["topic"], cell["difficulty"], want)
+            try:
+                result = await teacher.chat(messages, temperature=0.9, max_tokens=max_tokens)
+                items = _extract_json_array(result.content)
+            except Exception as exc:  # noqa: BLE001
+                logger.error(
+                    "generation failed for cell %s (round %d/%d): %s -- stopping this cell for this run",
+                    cell_id, round_num, _MAX_TOPUP_ROUNDS_PER_CELL, exc,
                 )
+                break
+
+            candidates: list[Question] = []
+            round_dropped = 0
+            for item in items:
+                if not _validate_gen_item(item):
+                    round_dropped += 1
+                    continue
+                candidates.append(
+                    Question(
+                        id=ledger_mod.question_id(item["text"]),
+                        text=item["text"],
+                        cell=cell_id,
+                        family_id=cell_id,
+                        source="teacher_gen",
+                        verify_method=item["verify_method"],
+                        gold=str(item["gold"]),
+                        split="train",  # placeholder; real split decided below after dedup
+                        config_hash=config_hash,
+                    )
+                )
+
+            valid_count = len(candidates)
+            candidates, dropped_exact = exact_dedup(candidates)
+            # Also drop anything that duplicates a question this cell already accepted in an
+            # earlier round (this run) or an earlier run -- exact_dedup() above only catches
+            # duplicates *within* this round's candidates.
+            existing_texts = _cell_texts(cell_id)
+            candidates = [q for q in candidates if ledger_mod.normalize(q.text) not in existing_texts]
+            dropped_prior_round = valid_count - len(dropped_exact) - len(candidates)
+            candidates, dropped_minhash = minhash_semantic_dedup(candidates)
+            candidates, dropped_family = template_family_cap(candidates, max_per_family=want)
+            round_dropped += len(dropped_exact) + dropped_prior_round + len(dropped_minhash) + len(dropped_family)
+            total_dropped += round_dropped
+
+            cell_holdout = candidates[:holdout_need]
+            cell_train = candidates[holdout_need : holdout_need + train_need]
+
+            new_holdout, new_train = 0, 0
+            for q in cell_holdout:
+                q = q.model_copy(update={"split": "holdout"})
+                if holdout_store.append(q):
+                    ledger.record(q.id, "question", upstream=[], config_hash=config_hash)
+                    all_holdout.append(q)
+                    new_holdout += 1
+            for q in cell_train:
+                if questions_store.append(q):
+                    ledger.record(q.id, "question", upstream=[], config_hash=config_hash)
+                    all_train.append(q)
+                    new_train += 1
+
+            train_have = sum(1 for q in all_train if q.cell == cell_id)
+            holdout_have = sum(1 for q in all_holdout if q.cell == cell_id)
+            logger.info(
+                "gen(p1) cell=%s round=%d/%d: raw=%d valid=%d dropped=%d -> +train=%d +holdout=%d "
+                "(now train=%d/%d holdout=%d/%d)",
+                cell_id, round_num, _MAX_TOPUP_ROUNDS_PER_CELL,
+                len(items) if isinstance(items, list) else 0, valid_count, round_dropped,
+                new_train, new_holdout, train_have, quota_per_cell, holdout_have, holdout_per_cell,
             )
 
-        valid_count = len(candidates)
-        candidates, dropped_exact = exact_dedup(candidates)
-        candidates, dropped_minhash = minhash_semantic_dedup(candidates)
-        candidates, dropped_family = template_family_cap(candidates, max_per_family=want)
-        cell_dropped += len(dropped_exact) + len(dropped_minhash) + len(dropped_family)
-        total_dropped += cell_dropped
-
-        cell_holdout = candidates[:holdout_per_cell]
-        cell_train = candidates[holdout_per_cell : holdout_per_cell + quota_per_cell]
-
-        for q in cell_holdout:
-            q = q.model_copy(update={"split": "holdout"})
-            holdout_store.append(q)
-            ledger.record(q.id, "question", upstream=[], config_hash=config_hash)
-            all_holdout.append(q)
-        for q in cell_train:
-            questions_store.append(q)
-            ledger.record(q.id, "question", upstream=[], config_hash=config_hash)
-            all_train.append(q)
-
-        logger.info(
-            "gen(p1) cell=%s: raw=%d valid=%d dedup_dropped=%d -> train=%d holdout=%d",
-            cell["id"], len(items) if isinstance(items, list) else 0, valid_count, cell_dropped, len(cell_train), len(cell_holdout),
-        )
+            if new_train == 0 and new_holdout == 0:
+                logger.warning(
+                    "gen(p1) cell=%s: round %d produced no usable new questions -- stopping this cell "
+                    "for this run (still train=%d/%d holdout=%d/%d)",
+                    cell_id, round_num, train_have, quota_per_cell, holdout_have, holdout_per_cell,
+                )
+                break
 
     return GenResult(train=all_train, holdout=all_holdout, dedup_dropped_count=total_dropped)

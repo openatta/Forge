@@ -1,7 +1,7 @@
 """Render selected Samples into TRL-ready SFT jsonl (student chat template)."""
 from __future__ import annotations
 
-from core.ledger import JsonlStore, Ledger
+from core.ledger import JsonlStore
 from core.schemas import Attempt, Question, Sample, SftRecord
 from collect.sample import SYSTEM_PROMPT
 
@@ -19,7 +19,6 @@ def compile_sft(
     attempts_by_id: dict[str, Attempt],
     questions_by_id: dict[str, Question],
     sft_store: JsonlStore,
-    ledger: Ledger,
 ) -> int:
     """Renders and persists each sample; returns the count of newly written sft records."""
     written = 0
@@ -39,7 +38,6 @@ def compile_sft(
         )
         if sft_store.append(record):
             written += 1
-            ledger.record(sample.id, "sample", upstream=[sample.attempt_id], config_hash=sample.config_hash)
     return written
 
 

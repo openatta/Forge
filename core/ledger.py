@@ -16,6 +16,11 @@ from pydantic import BaseModel
 from core.hashing import short_hash
 from core.schemas import LedgerEntry
 
+try:
+    import fcntl
+except ImportError:  # pragma: no cover - POSIX-only; this project targets macOS/Linux (see README)
+    fcntl = None  # type: ignore[assignment]
+
 logger = logging.getLogger(__name__)
 
 T = TypeVar("T", bound=BaseModel)
@@ -28,6 +33,15 @@ def now() -> datetime:
 class JsonlStore(Generic[T]):
     """Append-only jsonl store keyed by record.id. append() is idempotent: a record whose id is
     already present is skipped (logged at debug level), never rewritten or duplicated.
+
+    append() also holds an OS-level advisory lock (fcntl.flock) for its check-and-write and
+    re-reads the file fresh under that lock rather than trusting the in-memory `_ids` set built
+    at construction time -- otherwise two run.py processes pointed at the same data_dir could
+    both pass a stale membership check and duplicate-append the same id. Re-reading the whole
+    file on every append is O(n) rather than incremental, which is fine at the row counts P0/P1
+    actually produce (tens to low thousands); revisit if a stage starts writing at real scale.
+    has()/all() stay lock-free reads of whatever's on disk right now -- append() is the only
+    writer, so it's the only place actual corruption could happen.
     """
 
     def __init__(self, path: Path, model: type[T]):
@@ -48,12 +62,22 @@ class JsonlStore(Generic[T]):
     def append(self, record: T) -> bool:
         """Returns True if the record was newly written, False if it was already present."""
         with self._lock:
-            if record.id in self._ids:
-                logger.debug("skip (already present): %s", record.id)
-                return False
-            with self.path.open("a", encoding="utf-8") as f:
-                f.write(record.model_dump_json() + "\n")
-                f.flush()
+            with self.path.open("a+", encoding="utf-8") as f:
+                if fcntl is not None:
+                    fcntl.flock(f, fcntl.LOCK_EX)
+                try:
+                    f.seek(0)
+                    for line in f:
+                        if line.strip():
+                            self._ids.add(self.model.model_validate_json(line).id)
+                    if record.id in self._ids:
+                        logger.debug("skip (already present): %s", record.id)
+                        return False
+                    f.write(record.model_dump_json() + "\n")
+                    f.flush()
+                finally:
+                    if fcntl is not None:
+                        fcntl.flock(f, fcntl.LOCK_UN)
             self._ids.add(record.id)
             return True
 

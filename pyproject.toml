@@ -18,6 +18,7 @@ dependencies = [
 # mistralai, anthropic, instructor) — install with `pip install -e '.[p1]'` once P1 work actually starts.
 [project.optional-dependencies]
 p1 = ["bespokelabs-curator", "duckdb", "datasketch"]
+dev = ["pytest", "pytest-asyncio", "datasketch"]
 
 [build-system]
 requires = ["setuptools>=68"]
@@ -28,3 +29,7 @@ include = [
     "core*", "taxonomy*", "datagen*", "collect*", "envs*",
     "verify*", "select_*", "compile_*", "train*", "evals*",
 ]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+asyncio_mode = "auto"

@@ -126,12 +126,12 @@ def stage_select(
     return samples_store, pass_rates
 
 
-def stage_compile(config: dict, config_hash: str, ledger: Ledger, samples_store: JsonlStore, attempts_store: JsonlStore):
+def stage_compile(config: dict, samples_store: JsonlStore, attempts_store: JsonlStore):
     sft_store = JsonlStore(Path(config["data_dir"]) / "sft.jsonl", SftRecord)
     attempts_by_id = {a.id: a for a in attempts_store.all()}
     questions_by_id = _questions_by_id(config)
     current_samples = latest_samples(samples_store.all())
-    written = compile_sft(current_samples, attempts_by_id, questions_by_id, sft_store, ledger)
+    written = compile_sft(current_samples, attempts_by_id, questions_by_id, sft_store)
     sft_records = latest_sft_records(sft_store.all())
     logger.info("compile: %d new sft records (current total %d)", written, len(sft_records))
     return sft_store, sft_records
@@ -245,7 +245,7 @@ def stage_select_p1(
 
 
 def stage_compile_p1(
-    config: dict, ledger: Ledger, value_store: JsonlStore, baseline_store: JsonlStore,
+    config: dict, value_store: JsonlStore, baseline_store: JsonlStore,
     attempts_store: JsonlStore, train_questions: list[Question], holdout_questions: list[Question],
 ):
     attempts_by_id = {a.id: a for a in attempts_store.all()}
@@ -254,8 +254,8 @@ def stage_compile_p1(
     value_sft_store = JsonlStore(Path(config["data_dir"]) / "sft_value.jsonl", SftRecord)
     baseline_sft_store = JsonlStore(Path(config["data_dir"]) / "sft_baseline.jsonl", SftRecord)
 
-    compile_sft(latest_samples(value_store.all()), attempts_by_id, questions_by_id, value_sft_store, ledger)
-    compile_sft(latest_samples(baseline_store.all()), attempts_by_id, questions_by_id, baseline_sft_store, ledger)
+    compile_sft(latest_samples(value_store.all()), attempts_by_id, questions_by_id, value_sft_store)
+    compile_sft(latest_samples(baseline_store.all()), attempts_by_id, questions_by_id, baseline_sft_store)
 
     value_sft = latest_sft_records(value_sft_store.all())
     baseline_sft = latest_sft_records(baseline_sft_store.all())
@@ -326,7 +326,7 @@ def smoke(env: str = typer.Option(None, help="If set, resolve+probe an envs/ imp
     attempts_store, collect_stats = asyncio.run(stage_collect(config, config_hash, ledger, gen_result.train))
     _, verify_by_attempt = stage_verify(config, config_hash, ledger, attempts_store)
     samples_store, pass_rates = stage_select(config, config_hash, ledger, gen_result.train, attempts_store, verify_by_attempt)
-    _, sft_records = stage_compile(config, config_hash, ledger, samples_store, attempts_store)
+    _, sft_records = stage_compile(config, samples_store, attempts_store)
     eval_records = asyncio.run(stage_eval(config, config_hash, ledger, gen_result.holdout))
     stage_report(config, ledger, gen_result, collect_stats, pass_rates, sft_records, eval_records, attempts_store)
 
@@ -373,7 +373,7 @@ def compile_cmd():
     ledger = Ledger(Path(config["data_dir"]) / "ledger.jsonl")
     samples_store = JsonlStore(Path(config["data_dir"]) / "samples.jsonl", Sample)
     attempts_store = JsonlStore(Path(config["data_dir"]) / "attempts.jsonl", Attempt)
-    stage_compile(config, config_hash, ledger, samples_store, attempts_store)
+    stage_compile(config, samples_store, attempts_store)
 
 
 @app.command(name="eval")
@@ -422,7 +422,7 @@ def p1_cmd():
         config, config_hash, ledger, gen_result.train, attempts_store, verify_by_attempt
     )
     value_sft, baseline_sft = stage_compile_p1(
-        config, ledger, value_store, baseline_store, attempts_store, gen_result.train, gen_result.holdout
+        config, value_store, baseline_store, attempts_store, gen_result.train, gen_result.holdout
     )
     ckpt_value, ckpt_baseline = stage_train_p1(config, config_hash, ledger, value_sft, baseline_sft)
     arm_eval_records = asyncio.run(

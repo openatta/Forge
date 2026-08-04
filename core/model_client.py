@@ -122,8 +122,8 @@ class TeacherClient:
             self._debug_dir.mkdir(parents=True, exist_ok=True)
             path = self._debug_dir / f"{response.id}.json"
             path.write_text(json.dumps(response.model_dump(mode="json"), ensure_ascii=False), encoding="utf-8")
-        except Exception:  # noqa: BLE001 - debug persistence must never break the pipeline
-            pass
+        except Exception as exc:  # noqa: BLE001 - debug persistence must never break the pipeline
+            logger.debug("debug persistence failed (non-fatal): %s", exc)
 
 
 class VLLMClient:

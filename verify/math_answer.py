@@ -18,15 +18,34 @@ from verify.base import Verifier
 # after the real answer line -- e.g. a model second-guessing itself -- doesn't get picked up instead
 # of the actual "Final Answer: ..." line the system prompt asks for.
 _FINAL_ANSWER_RE = re.compile(r"^\s*final answer\s*:?\s*(.+)$", re.IGNORECASE | re.MULTILINE)
-_BOXED_RE = re.compile(r"\\boxed\{([^}]*)\}")
+_BOXED_START_RE = re.compile(r"\\boxed\{")
+_LEADING_QUALIFIER_RE = re.compile(r"^(?:≈|~|about|approx(?:imately)?|roughly)\s*", re.IGNORECASE)
 
 # Content hash of this file, used as the verifier's version so a code change to _check/_extract_*
 # automatically invalidates any VerifyResult cached under the old (possibly buggy) logic.
 _VERIFIER_VERSION = hashlib.sha256(Path(__file__).read_bytes()).hexdigest()[:8]
 
 
+def _find_boxed_matches(content: str) -> list[str]:
+    """Finds every \\boxed{...} body, respecting nested braces (e.g. \\boxed{\\frac{1}{2}}) -- a flat
+    regex like \\boxed\\{([^}]*)\\} stops at the first '}' and would truncate that to "\\frac{1"."""
+    matches = []
+    for start_match in _BOXED_START_RE.finditer(content):
+        i = start_match.end()
+        depth = 1
+        while i < len(content) and depth > 0:
+            if content[i] == "{":
+                depth += 1
+            elif content[i] == "}":
+                depth -= 1
+            i += 1
+        if depth == 0:
+            matches.append(content[start_match.end() : i - 1])
+    return matches
+
+
 def _extract_answer_text(content: str) -> str:
-    boxed_matches = _BOXED_RE.findall(content)
+    boxed_matches = _find_boxed_matches(content)
     if boxed_matches:
         return boxed_matches[-1]
     final_matches = _FINAL_ANSWER_RE.findall(content)
@@ -42,6 +61,10 @@ def _normalize_term(term: str) -> str:
     term = term.strip().strip(".").strip("$").strip()
     term = re.sub(r"\\[()\[\]]", "", term)  # strip LaTeX \( \) \[ \] delimiters, e.g. "\(x = -2\)"
     term = term.strip()
+    # Strip a leading approximation qualifier ("about 5", "~5", "≈5") before it reaches sympify --
+    # otherwise these fail to parse entirely and fall back to a literal string compare against gold,
+    # false-negativing an answer that's numerically correct.
+    term = _LEADING_QUALIFIER_RE.sub("", term)
     term = re.sub(r"^[xX]\s*=\s*", "", term)
     return term.strip()
 
