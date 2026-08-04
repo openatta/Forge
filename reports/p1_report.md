@@ -13,10 +13,10 @@
 |---|---|---|---|---|
 | arithmetic/easy | 100% (n=1, CI [21%,100%]) | 100% (n=1, CI [21%,100%]) | 100% (n=1, CI [21%,100%]) | 100% (n=1, CI [21%,100%]) |
 | arithmetic/medium | 0% (n=1, CI [0%,79%]) | 0% (n=1, CI [0%,79%]) | 0% (n=1, CI [0%,79%]) | 0% (n=1, CI [0%,79%]) |
-| arithmetic/hard | 0% (n=1, CI [0%,79%]) | 0% (n=1, CI [0%,79%]) | 0% (n=1, CI [0%,79%]) | 100% (n=1, CI [21%,100%]) |
+| arithmetic/hard | 0% (n=1, CI [0%,79%]) | 0% (n=1, CI [0%,79%]) | 100% (n=1, CI [21%,100%]) | 100% (n=1, CI [21%,100%]) |
 | algebra/easy | 100% (n=1, CI [21%,100%]) | 100% (n=1, CI [21%,100%]) | 100% (n=1, CI [21%,100%]) | 100% (n=1, CI [21%,100%]) |
 | algebra/medium | 100% (n=1, CI [21%,100%]) | 100% (n=1, CI [21%,100%]) | 100% (n=1, CI [21%,100%]) | 100% (n=1, CI [21%,100%]) |
-| algebra/hard | n/a | n/a | n/a | n/a |
+| algebra/hard | 0% (n=1, CI [0%,79%]) | 0% (n=1, CI [0%,79%]) | 0% (n=1, CI [0%,79%]) | 0% (n=1, CI [0%,79%]) |
 | geometry/easy | 100% (n=1, CI [21%,100%]) | 100% (n=1, CI [21%,100%]) | 100% (n=1, CI [21%,100%]) | 100% (n=1, CI [21%,100%]) |
 | geometry/medium | 100% (n=1, CI [21%,100%]) | 100% (n=1, CI [21%,100%]) | 100% (n=1, CI [21%,100%]) | 100% (n=1, CI [21%,100%]) |
 | geometry/hard | 0% (n=1, CI [0%,79%]) | 0% (n=1, CI [0%,79%]) | 0% (n=1, CI [0%,79%]) | 0% (n=1, CI [0%,79%]) |
@@ -25,19 +25,19 @@
 | word_problems/hard | 100% (n=1, CI [21%,100%]) | 100% (n=1, CI [21%,100%]) | 100% (n=1, CI [21%,100%]) | 100% (n=1, CI [21%,100%]) |
 | fractions_decimals/easy | 100% (n=1, CI [21%,100%]) | 100% (n=1, CI [21%,100%]) | 100% (n=1, CI [21%,100%]) | 100% (n=1, CI [21%,100%]) |
 | fractions_decimals/medium | 100% (n=1, CI [21%,100%]) | 100% (n=1, CI [21%,100%]) | 100% (n=1, CI [21%,100%]) | 100% (n=1, CI [21%,100%]) |
-| fractions_decimals/hard | n/a | n/a | n/a | n/a |
+| fractions_decimals/hard | 100% (n=1, CI [21%,100%]) | 100% (n=1, CI [21%,100%]) | 100% (n=1, CI [21%,100%]) | 100% (n=1, CI [21%,100%]) |
 | ratios_proportions/easy | 100% (n=1, CI [21%,100%]) | 100% (n=1, CI [21%,100%]) | 100% (n=1, CI [21%,100%]) | 100% (n=1, CI [21%,100%]) |
 | ratios_proportions/medium | 100% (n=1, CI [21%,100%]) | 100% (n=1, CI [21%,100%]) | 100% (n=1, CI [21%,100%]) | 100% (n=1, CI [21%,100%]) |
 | ratios_proportions/hard | 100% (n=1, CI [21%,100%]) | 100% (n=1, CI [21%,100%]) | 100% (n=1, CI [21%,100%]) | 100% (n=1, CI [21%,100%]) |
 | exponents_roots/easy | 100% (n=1, CI [21%,100%]) | 100% (n=1, CI [21%,100%]) | 100% (n=1, CI [21%,100%]) | 100% (n=1, CI [21%,100%]) |
 | exponents_roots/medium | 100% (n=1, CI [21%,100%]) | 100% (n=1, CI [21%,100%]) | 100% (n=1, CI [21%,100%]) | 100% (n=1, CI [21%,100%]) |
 | exponents_roots/hard | 0% (n=1, CI [0%,79%]) | 0% (n=1, CI [0%,79%]) | 0% (n=1, CI [0%,79%]) | 0% (n=1, CI [0%,79%]) |
-| **macro avg** | 79% | 79% | 79% | 84% |
+| **macro avg** | 76% | 76% | 81% | 81% |
 
 ## Worst 3 cells (ranked by `value_selected` arm)
 - arithmetic/medium: 0%
 - arithmetic/hard: 0%
-- geometry/hard: 0%
+- algebra/hard: 0%
 
 ## Ledger traceability (one sample per arm)
 - **value_selected**: question:q-10da41663c52 -> attempt:att-q-10da41663c52-teacher-hi-0-ec4248 -> sample:smp-q-10da41663c52-sft-batch-d84e89e3f3-a9f619
